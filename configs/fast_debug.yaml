@@ -1,0 +1,68 @@
+# Config para teste rápido / debug
+# Epochs mínimos, dados pequenos, sem bootstrap pesado
+
+collect:
+  events:
+    - cycles
+    - instructions
+    - cache-references
+    - cache-misses
+    - branch-instructions
+    - branch-misses
+  interval_ms: 10
+  duration_sec: 30             # 30s só pra validar pipeline
+
+tokenize:
+  n_bins: 16                   # menos bins = treino mais rápido
+  window_size: 20              # janelas menores
+  stride: 5                    # stride maior = menos janelas
+  method: "quantile"
+  rhythm_tokens: false         # desligado pra simplificar
+  rhythm_window: 5
+
+slm:
+  n_embd: 64
+  n_head: 2
+  n_layer: 2
+  dropout: 0.1
+
+stage1:
+  n_embd: 32
+  n_head: 2
+  n_layer: 1
+  dropout: 0.0
+  quantize: true
+
+lora:
+  rank: 4
+  alpha: 8
+  target_modules: ["qkv"]
+  dropout: 0.0
+
+lstm:
+  hidden_size: 64
+  num_layers: 1
+  window_size: 20
+  dropout: 0.0
+
+train:
+  batch_size: 32
+  lr: 1.0e-3
+  epochs: 5
+  patience: 3
+  val_split: 0.15
+  seed: 42
+
+eval:
+  warning_percentile: 90
+  anomaly_percentile: 99
+  ema_alpha: 0.3
+  fpr_targets: [0.01, 0.05]
+  multi_resolution:
+    enabled: false
+  change_point:
+    enabled: false
+  measure_overhead: true
+  overhead_n_runs: 10
+  bootstrap:
+    enabled: false

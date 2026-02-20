@@ -1,0 +1,81 @@
+# Config para experimento de scaling do SLM
+# Rodar com modelos de tamanhos diferentes para gerar curva
+# acurácia x latência x parâmetros
+#
+# Uso: sobrescrever seção slm para cada tamanho:
+#   python src/train.py --model slm --config configs/model_scaling.yaml
+#
+# Tamanhos a testar (alterar n_embd/n_head/n_layer):
+#   Tiny:   n_embd=64,  n_head=2, n_layer=2  (~0.2M)
+#   Small:  n_embd=128, n_head=4, n_layer=4  (~0.8M)  << default
+#   Medium: n_embd=256, n_head=8, n_layer=6  (~5M)
+#   Large:  n_embd=512, n_head=8, n_layer=8  (~20M)
+
+collect:
+  events:
+    - cycles
+    - instructions
+    - cache-references
+    - cache-misses
+    - branch-instructions
+    - branch-misses
+  interval_ms: 10
+  duration_sec: 300
+
+tokenize:
+  n_bins: 32
+  window_size: 50
+  stride: 1
+  method: "quantile"
+  rhythm_tokens: true
+  rhythm_window: 5
+
+# << ALTERAR AQUI PARA CADA EXPERIMENTO >>
+slm:
+  n_embd: 128
+  n_head: 4
+  n_layer: 4
+  dropout: 0.1
+
+stage1:
+  n_embd: 64
+  n_head: 2
+  n_layer: 2
+  dropout: 0.0
+  quantize: true
+
+lora:
+  rank: 8
+  alpha: 16
+  target_modules: ["qkv", "fc", "head"]
+  dropout: 0.05
+
+lstm:
+  hidden_size: 128
+  num_layers: 2
+  window_size: 50
+  dropout: 0.1
+
+train:
+  batch_size: 64
+  lr: 3.0e-4
+  epochs: 30
+  patience: 5
+  val_split: 0.15
+  seed: 42
+
+eval:
+  warning_percentile: 90
+  anomaly_percentile: 99
+  ema_alpha: 0.3
+  fpr_targets: [0.001, 0.01, 0.05]
+  multi_resolution:
+    enabled: false              # desligado pra scaling puro
+  change_point:
+    enabled: false
+  measure_overhead: true
+  overhead_n_runs: 100
+  bootstrap:
+    enabled: true
+    n_iterations: 500           # reduzido pra rodar mais rápido
+    confidence: 0.95

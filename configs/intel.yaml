@@ -1,0 +1,85 @@
+# Config para CPUs Intel (famílias de eventos portáveis)
+# Testado em: Skylake, Coffee Lake, Ice Lake, Alder Lake
+
+collect:
+  events:
+    # Eventos genéricos (disponíveis em todas as gerações Intel)
+    - cycles
+    - instructions
+    - cache-references
+    - cache-misses
+    - branch-instructions
+    - branch-misses
+    # Eventos Intel-específicos (mais sinal, menos portáveis)
+    # Descomentar conforme disponibilidade:
+    # - L1-dcache-loads
+    # - L1-dcache-load-misses
+    # - LLC-loads
+    # - LLC-load-misses
+    # - dTLB-loads
+    # - dTLB-load-misses
+    # - mem-stores
+  interval_ms: 10
+  duration_sec: 300
+
+tokenize:
+  n_bins: 32
+  window_size: 50
+  stride: 1
+  method: "quantile"
+  rhythm_tokens: true
+  rhythm_window: 5
+
+slm:
+  n_embd: 128
+  n_head: 4
+  n_layer: 4
+  dropout: 0.1
+
+stage1:
+  n_embd: 64
+  n_head: 2
+  n_layer: 2
+  dropout: 0.0
+  quantize: true
+
+lora:
+  rank: 8
+  alpha: 16
+  target_modules: ["qkv", "fc", "head"]
+  dropout: 0.05
+
+lstm:
+  hidden_size: 128
+  num_layers: 2
+  window_size: 50
+  dropout: 0.1
+
+train:
+  batch_size: 64
+  lr: 3.0e-4
+  epochs: 30
+  patience: 5
+  val_split: 0.15
+  seed: 42
+
+eval:
+  warning_percentile: 90
+  anomaly_percentile: 99
+  ema_alpha: 0.3
+  fpr_targets: [0.001, 0.01, 0.05]
+  multi_resolution:
+    enabled: true
+    windows_ms: [10, 100, 1000]
+    fusion: "max"
+  change_point:
+    enabled: true
+    method: "cusum"
+    drift: 0.5
+    threshold: 5.0
+  measure_overhead: true
+  overhead_n_runs: 100
+  bootstrap:
+    enabled: true
+    n_iterations: 1000
+    confidence: 0.95
