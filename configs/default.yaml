@@ -1,0 +1,89 @@
+# === Coleta PMU ===
+collect:
+  events:
+    - cycles
+    - instructions
+    - cache-references
+    - cache-misses
+    - branch-instructions
+    - branch-misses
+  interval_ms: 10
+  duration_sec: 300          # 5 minutos por sessão
+
+# === Tokenização ===
+tokenize:
+  n_bins: 32                 # bins por evento
+  window_size: 50            # frames por janela (50 x 10ms = 500ms)
+  stride: 1                  # stride entre janelas
+  method: "quantile"         # quantile | uniform
+  rhythm_tokens: true        # incluir tokens de ritmo (burst/steady/drop)
+  rhythm_window: 5           # frames para calcular ritmo (derivada local)
+
+# === SLM ===
+slm:
+  n_embd: 128
+  n_head: 4
+  n_layer: 4
+  dropout: 0.1
+
+# === SLM Stage 1 (host, quantizado) ===
+stage1:
+  n_embd: 64
+  n_head: 2
+  n_layer: 2
+  dropout: 0.0
+  quantize: true             # INT8 via torch quantization
+
+# === LoRA ===
+lora:
+  rank: 8
+  alpha: 16
+  target_modules: ["qkv", "fc", "head"]   # módulos para aplicar LoRA
+  dropout: 0.05
+
+# === LSTM Baseline ===
+lstm:
+  hidden_size: 128
+  num_layers: 2
+  window_size: 50            # igual ao paper (N=50)
+  dropout: 0.1
+
+# === Treino ===
+train:
+  batch_size: 64
+  lr: 3.0e-4
+  epochs: 30
+  patience: 5                # early stopping
+  val_split: 0.15
+  seed: 42
+
+# === Avaliação ===
+eval:
+  # Limiares de 2 níveis
+  warning_percentile: 90     # limiar warning (mais sensível)
+  anomaly_percentile: 99     # limiar anomaly (mais específico)
+  ema_alpha: 0.3             # suavização EMA
+  fpr_targets: [0.001, 0.01, 0.05]
+
+  # Multi-resolução
+  multi_resolution:
+    enabled: true
+    windows_ms: [10, 100, 1000]    # resoluções em ms
+    fusion: "max"                   # max | weighted_avg | vote
+
+  # Change-point detection (CUSUM)
+  change_point:
+    enabled: true
+    method: "cusum"
+    drift: 0.5               # drift mínimo para CUSUM
+    threshold: 5.0            # limiar de alarme CUSUM
+
+  # Overhead
+  measure_overhead: true
+  overhead_n_runs: 100        # repetições para latência p95
+
+  # Bootstrap
+  bootstrap:
+    enabled: true
+    n_iterations: 1000
+    confidence: 0.95
